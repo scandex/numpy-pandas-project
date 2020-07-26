@@ -48,9 +48,9 @@ class DataBot:
             self.features = dataset
 
     # Lambda for a series object that fill nulls with the mean.
-    fill_mean = None
+    fill_mean = lambda x: x.fillna(x.mean())
     # Lambda for a series object that fill nulls with the mode.
-    fill_mode = None
+    fill_mode = lambda x: x.fillna(x.mode().iloc[0])
 
     def scale_range(self, x):
         return (x - x.min(axis=0)) / (x.max(axis=0) - x.min(axis=0))
@@ -71,6 +71,7 @@ class DataBot:
         :param columns: list of columns names to impute.
         :param impute_strategy: Selected ImputerStrategy
         """
+        self.features[columns].apply(self.impute_strategies[impute_strategy])
         pass
 
     def one_hot_encode(self, col_name, categorical_values):
@@ -80,26 +81,33 @@ class DataBot:
         :param categorical_values: Unique values from self.features[col_name]
         :return:
         """
-        pass
+        self.features = pd.get_dummies(self.features, columns=[col_name])
+
 
     def normalize(self, columns):
         """Apply self.scale_range and self.scale_log to the given columns
         :param columns: list of columns names to normalize
         """
-        self.features[columns] = None
-        self.features[columns] = None
+        self.dataset[columns] = self.dataset[columns].apply(self.scale_range).apply(self.scale_log)
+
+        self.features[columns] = self.dataset[columns].apply(self.scale_range)
+        self.features[columns] = self.dataset[columns].apply(self.scale_log)
 
     def remove_null_columns(self):
         """Remove columns with a percentage of null values greater than the given threshold (self.null_threshold).
         
         """
-        pass
+        threshold_condition = self.features.isnull().mean() <= self.null_threshold
+        under_threshold_columns = self.features.columns[threshold_condition]
+        self.features = self.features[under_threshold_columns]
 
     def remove_high_cardinality_columns(self):
         """Remove columns with a cardinality percentage greater than the given threshold (self.cardinal_threshold).
 
         """
-        pass
+        threshold_condition = self.features.nunique() / len(self.features) <= self.cardinal_threshold
+        under_threshold_columns = self.features.columns[threshold_condition]
+        self.features = self.features[under_threshold_columns]
 
     def pre_process(self):
         """Preprocess dataset features before being send to ML algorithm for training.
@@ -107,34 +115,40 @@ class DataBot:
         # Implement this method with the given indications in the given order
 
         # Remove columns with null values above the threshold
+        self.remove_null_columns()
 
         # Remove columns with cardinality above the threshold
+        self.remove_high_cardinality_columns()
 
         # Create a python list with the names of columns with numeric values.
         # Numeric columns have one of the types stored in the list self.numeric_types
-        self.numeric_columns = None
+        self.numeric_columns = self.features.select_dtypes(include=self.numeric_types).columns.tolist()
 
         # Create a python list with the names of columns with string values.
         # Categorical columns have one of the types stored in the list self.string_types
-        self.categorical_columns = None
+        self.categorical_columns = self.features.select_dtypes(include=self.string_types).columns.tolist()
 
         # Create a python list with the names of numeric columns with at least one null value.
-        numeric_nulls = None
+        numeric_nulls = self.features[self.numeric_columns].dropna(axis=1).columns.tolist()
 
         # Create a python list with the names of categorical columns with at least one null value.
-        categorical_nulls = None
+        categorical_nulls = self.features[self.categorical_columns].dropna(axis=1).columns.tolist()
 
         # Impute numerical columns with at least one null value.
+        self.impute(numeric_nulls, ImputerStrategy.MEAN)
 
         # Impute categorical columns with at least one null value.
+        self.impute(categorical_nulls, ImputerStrategy.MODE)
 
         # These two lines gather information from the dataset for further use.
         self.datasetAttributes.set_column_values(self.categorical_columns, self.features)
         self.datasetAttributes.set_number_values(self.numeric_columns, self.features)
 
         # Apply one hot encoding to all categorical columns.
+        [self.one_hot_encode(i, self.features[i].nunique()) for i in self.categorical_columns]
 
         # Normalize all numeric columns
+        self.normalize(self.numeric_columns)
 
         # This line store relevant information from the processed dataset for further use.
         self.datasetAttributes.save()
