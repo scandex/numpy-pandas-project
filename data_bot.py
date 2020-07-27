@@ -86,10 +86,8 @@ class DataBot:
         """Apply self.scale_range and self.scale_log to the given columns
         :param columns: list of columns names to normalize
         """
-        self.dataset[columns] = self.dataset[columns].apply(self.scale_range).apply(self.scale_log)
-
-        self.features[columns] = self.dataset[columns].apply(self.scale_range)
-        self.features[columns] = self.dataset[columns].apply(self.scale_log)
+        self.features[columns] = self.features[columns].apply(self.scale_range)
+        self.features[columns] = self.features[columns].apply(self.scale_log)
 
     def remove_null_columns(self):
         """Remove columns with a percentage of null values greater than the given threshold (self.null_threshold).
@@ -127,10 +125,10 @@ class DataBot:
         self.categorical_columns = self.features.select_dtypes(include=self.string_types).columns.tolist()
 
         # Create a python list with the names of numeric columns with at least one null value.
-        numeric_nulls = self.features[self.numeric_columns].dropna(axis=1).columns.tolist()
+        numeric_nulls = self.features[self.numeric_columns].isna().any().index.tolist()
 
         # Create a python list with the names of categorical columns with at least one null value.
-        categorical_nulls = self.features[self.categorical_columns].dropna(axis=1).columns.tolist()
+        categorical_nulls = self.features[self.categorical_columns].isna().any().index.tolist()
 
         # Impute numerical columns with at least one null value.
         self.impute(numeric_nulls, ImputerStrategy.MEAN)
