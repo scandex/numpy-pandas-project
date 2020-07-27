@@ -71,8 +71,7 @@ class DataBot:
         :param columns: list of columns names to impute.
         :param impute_strategy: Selected ImputerStrategy
         """
-        self.features[columns].apply(self.impute_strategies[impute_strategy])
-        pass
+        self.features[columns] = self.features[columns].apply(self.impute_strategies[impute_strategy])
 
     def one_hot_encode(self, col_name, categorical_values):
         """ Apply one hot encoding to the given column.
@@ -82,7 +81,6 @@ class DataBot:
         :return:
         """
         self.features = pd.get_dummies(self.features, columns=[col_name])
-
 
     def normalize(self, columns):
         """Apply self.scale_range and self.scale_log to the given columns
