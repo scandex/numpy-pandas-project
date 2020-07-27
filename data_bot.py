@@ -105,6 +105,7 @@ class DataBot:
         under_threshold_columns = self.features.columns[threshold_condition]
         self.features = self.features[under_threshold_columns]
 
+
     def pre_process(self):
         """Preprocess dataset features before being send to ML algorithm for training.
         """
@@ -139,6 +140,9 @@ class DataBot:
         # These two lines gather information from the dataset for further use.
         self.datasetAttributes.set_column_values(self.categorical_columns, self.features)
         self.datasetAttributes.set_number_values(self.numeric_columns, self.features)
+
+        # adding removed columns to datasetAttributes
+        self.datasetAttributes.parameters['removed_columns'] += self.dataset.columns.difference(self.features.columns).tolist()
 
         # Apply one hot encoding to all categorical columns.
         [self.one_hot_encode(i, self.features[i].nunique()) for i in self.categorical_columns]
